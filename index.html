@@ -18,7 +18,7 @@
       --ctrl-width: 112px;
       --header-font: 13.5px;
       --logo-h: 26px;
-      --data-font: 10px;
+      --data-font: 9.5px;
       --info-font: 10.5px;
       --unit-col-w: 72px;
     }
@@ -258,28 +258,27 @@
     /* ══════════════════════════════════════════
        Coolant Data 탭 — 고정열 + 스크롤열 분할 테이블
        (position:sticky 미사용 → 모바일 브라우저 호환성 100%)
+       세로: 페이지 전체 스크롤로 자연스럽게 흐르게 둠 (내부에 가두지 않음)
+       가로: 제품 값 영역만 자체적으로 좌우 스크롤
        ══════════════════════════════════════════ */
     .data-tab-card {
       display: flex;
       flex-direction: column;
-      max-height: calc(100vh - 90px);
-      max-height: calc(100dvh - 90px);
     }
     .split-table-wrap {
       display: flex;
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow: hidden;
+      align-items: flex-start;
     }
     .frozen-cols {
       flex-shrink: 0;
-      overflow: hidden;
       border-right: 2px solid #c7cee0;
     }
     .scroll-cols {
       flex: 1 1 auto;
       min-width: 0;
-      overflow: auto;
+      overflow-x: auto;
+      overflow-y: visible;
+      -webkit-overflow-scrolling: touch;
     }
     .frozen-table, .scroll-table {
       border-collapse: separate;
@@ -291,7 +290,7 @@
     .scroll-table th, .scroll-table td {
       border-right: 1px solid #e5e8f0;
       border-bottom: 1px solid #e5e8f0;
-      padding: 4px 6px;
+      padding: 3px 5px;
       text-align: center;
       line-height: 1.3;
     }
