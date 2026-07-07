@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Coolant Capacity Calculator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #e8edf5;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 14px;
+      overflow-y: auto;
+    }
+
+    /* ══════════════════════════════════════════
+       전체 래퍼: 탭(계산기 / Coolant Data 전체)
+       ══════════════════════════════════════════ */
+    .app {
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* 데스크톱: 좌우 여백을 줄이고 그 공간에 정보 패널을 배치 */
+    @media (min-width: 860px) {
+      .app { max-width: 900px; }
+    }
+
+    /* ── 상단 탭 ── */
+    .top-tabs {
+      display: flex;
+      gap: 8px;
+    }
+    .top-tab-btn {
+      flex: 1;
+      padding: 9px 10px;
+      text-align: center;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #5a6480;
+      background: #fff;
+      border: 1px solid #d8dded;
+      border-radius: 9px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .top-tab-btn.active {
+      color: #fff;
+      background: #1a2550;
+      border-color: #1a2550;
+    }
+
+    .tab-view { display: none; }
+    .tab-view.active { display: block; }
+
+    /* ══════════════════════════════════════════
+       계산기 + 정보패널 (반응형: 모바일=아래, PC=우측)
+       ══════════════════════════════════════════ */
+    .calc-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    @media (min-width: 860px) {
+      .calc-layout {
+        flex-direction: row;
+        align-items: flex-start;
+      }
+      .calc-layout .card { flex: 0 0 340px; }
+      .calc-layout .info-card { flex: 1 1 auto; min-width: 0; }
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+    }
+
+    /* ── Header ── */
+    .card-header {
+      background: #1a2550;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px;
+    }
+    .card-header h1 { color: #fff; font-size: 13.5px; font-weight: 700; letter-spacing: 0.2px; }
+    .logo-img {
+      height: 26px; width: auto; display: block;
+      background: #fff; border-radius: 5px; padding: 2px 6px;
+    }
+
+    /* ── URL 미설정 배너 ── */
+    .url-banner {
+      display: none;
+      background: #fff3cd; border-bottom: 1px solid #ffe08a;
+      padding: 7px 16px; font-size: 11px; color: #7a5c00;
+      align-items: center; gap: 8px;
+    }
+    .url-banner.show { display: flex; }
+
+    /* ── Section label ── */
+    .section-label {
+      padding: 7px 16px 4px;
+      font-size: 11px; color: #5a6480; font-weight: 600;
+      border-bottom: 1px solid #e5e9f2;
+    }
+
+    /* ── Row ── */
+    .row {
+      display: flex; align-items: center;
+      padding: 6px 16px;
+      border-bottom: 1px solid #eef1f7;
+      gap: 8px;
+    }
+    .row-num { font-size: 11px; color: #9aa3be; font-weight: 600; width: 13px; flex-shrink: 0; }
+    .row-label { flex: 1; min-width: 0; }
+    .row-label .label-main { font-size: 12px; color: #1a2550; font-weight: 500; }
+    .row-label .label-sub  { font-size: 9.5px; color: #9aa3be; margin-top: 1px; }
+    .row-control { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+
+    .ctrl-wide { width: 112px; }
+
+    select.ctrl-wide {
+      appearance: none; -webkit-appearance: none;
+      background: #fff; border: 1px solid #d0d6e8; border-radius: 7px;
+      padding: 5px 24px 5px 8px;
+      font-size: 12px; color: #1a2550; font-family: inherit; cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%235a6480' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 7px center;
+    }
+    select.ctrl-wide:focus { outline: none; border-color: #4a5fc1; }
+
+    input.ctrl-wide {
+      border: 1px solid #d0d6e8; border-radius: 7px;
+      padding: 5px 8px;
+      font-size: 12px; color: #1a2550; font-family: inherit; text-align: right;
+    }
+    input.ctrl-wide:focus { outline: none; border-color: #4a5fc1; }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    /* ── ± button ── */
+    .sign-btn {
+      background: #f0f3fb; border: 1px solid #d0d6e8; border-radius: 7px;
+      width: 27px; height: 27px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; color: #5a6480;
+      cursor: pointer; user-select: none; flex-shrink: 0;
+    }
+    .sign-btn:hover { background: #e2e7f5; }
+
+    /* ── Result ── */
+    .result-box {
+      width: 112px; border-radius: 7px;
+      padding: 5px 9px; display: flex; align-items: center; justify-content: flex-end;
+    }
+    .result-box.blue  { background: #dce8f5; }
+    .result-box.green { background: #d6f0e0; }
+    .result-value { font-size: 12.5px; font-weight: 600; color: #1a2550; text-align: right; width: 100%; }
+
+    /* ── Footer ── */
+    .card-footer {
+      padding: 6px; text-align: center;
+      font-size: 9.5px; color: #aab0c8;
+      border-top: 1px solid #eef1f7;
+    }
+
+    /* ── Modal (항목 추가) ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      justify-content: center; align-items: center; z-index: 100;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 12px; padding: 26px 28px; width: 340px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+    .modal h2 { font-size: 15px; font-weight: 700; color: #1a2550; margin-bottom: 18px; }
+    .modal label {
+      display: block; font-size: 12px; color: #5a6480; font-weight: 600;
+      margin-bottom: 4px; margin-top: 12px;
+    }
+    .modal input[type="text"] {
+      width: 100%; border: 1px solid #d0d6e8; border-radius: 7px;
+      padding: 8px 11px; font-size: 13.5px; color: #1a2550; font-family: inherit;
+    }
+    .modal input[type="text"]:focus { outline: none; border-color: #4a5fc1; }
+    .modal-hint { font-size: 11px; color: #9aa3be; margin-top: 5px; line-height: 1.5; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+    .btn {
+      flex: 1; padding: 9px; border-radius: 8px; border: none;
+      font-size: 13.5px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .btn-primary { background: #1a2550; color: #fff; }
+    .btn-primary:hover { background: #253070; }
+    .btn-secondary { background: #f0f3fb; color: #5a6480; }
+    .btn-secondary:hover { background: #e2e7f5; }
+    .modal-error { font-size: 12px; color: #c0392b; margin-top: 8px; display: none; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: #1a2550; color: #fff;
+      padding: 10px 20px; border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s; z-index: 200; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ══════════════════════════════════════════
+       선택한 Coolant 정보 패널 (image2 스타일, 세로형)
+       ══════════════════════════════════════════ */
+    .info-card .card-header h1::before {
+      content: "🧪 ";
+    }
+    .info-card-body { padding: 0; }
+    .info-empty {
+      padding: 22px 16px;
+      text-align: center;
+      font-size: 11.5px;
+      color: #aab0c8;
+      line-height: 1.6;
+    }
+    .info-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 10.5px;
+    }
+    .info-table th, .info-table td {
+      border-right: 1px solid #e5e8f0;
+      border-bottom: 1px solid #e5e8f0;
+      padding: 4px 6px;
+      text-align: center;
+      line-height: 1.3;
+    }
+    .info-table th:first-child, .info-table td:first-child { border-left: 1px solid #e5e8f0; }
+    .info-table thead th { border-top: 1px solid #e5e8f0; }
+    .info-th-label, .info-td-label {
+      background: #f2f2f2; color: #000; font-weight: 700;
+    }
+    .info-td-unit { background: #f2f2f2; color: #000; font-weight: 700; }
+    .info-th-selected {
+      background: #ffe600; color: #000; font-weight: 700;
+    }
+    .info-td-value { background: #fff; color: #000; font-weight: 400; }
+    .info-table .text-red { color: #ff0000 !important; }
+
+    /* ══════════════════════════════════════════
+       Coolant Data 탭 (계산기 목록에 없는 항목만)
+       ══════════════════════════════════════════ */
+    .data-tab-card {
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 90px);
+      max-height: calc(100dvh - 90px);
+    }
+    .data-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+    .data-table {
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 10px;
+      white-space: nowrap;
+    }
+    .data-table th, .data-table td {
+      border-right: 1px solid #e5e8f0;
+      border-bottom: 1px solid #e5e8f0;
+      padding: 4px 6px;
+      text-align: center;
+      line-height: 1.3;
+    }
+    .data-table th:first-child, .data-table td:first-child { border-left: 1px solid #e5e8f0; }
+    .data-table thead th { border-top: 1px solid #e5e8f0; position: sticky; top: 0; z-index: 2; }
+    .data-table th.th-label, .data-table th.th-product, .data-table td.td-label {
+      background: #f2f2f2; color: #000; font-weight: 700;
+    }
+    .data-table th.th-label:nth-child(1), .data-table td.td-label:nth-child(1) {
+      position: sticky; left: 0; z-index: 1; width: 62px; min-width: 62px; max-width: 62px;
+    }
+    .data-table th.th-label:nth-child(2), .data-table td.td-label:nth-child(2) {
+      position: sticky; left: 62px; z-index: 1; width: 112px; min-width: 112px; max-width: 112px;
+      white-space: normal;
+    }
+    .data-table th.th-label:nth-child(3), .data-table td.td-label:nth-child(3) {
+      position: sticky; left: 174px; z-index: 1; width: 46px; min-width: 46px; max-width: 46px;
+    }
+    .data-table thead th.th-label { z-index: 3; }
+    .data-table td.td-data { background: #fff; color: #000; font-weight: 400; min-width: 52px; }
+    .data-table .text-red { color: #ff0000 !important; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- 상단 탭 -->
+  <div class="top-tabs">
+    <button class="top-tab-btn active" id="topTabCalc" onclick="showTopTab('calc')">계산기</button>
+    <button class="top-tab-btn" id="topTabData" onclick="showTopTab('data')">Coolant Data (전체)</button>
+  </div>
+
+  <!-- ══════════════ 탭 1: 계산기 + 선택 물성 패널 ══════════════ -->
+  <div class="tab-view active" id="viewCalc">
+    <div class="calc-layout">
+
+      <!-- 계산기 카드 -->
+      <div class="card">
+        <div class="card-header">
+          <h1>Coolant Capacity Calculator</h1>
+          <img class="logo-img" src="data:image/png;base64,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" alt="GST" />
+        </div>
+
+        <div class="url-banner" id="urlBanner">
+          ⚠️ GAS_URL이 설정되지 않았습니다.
+          HTML 파일 상단의 <code style="background:#ffe8a0;padding:1px 4px;border-radius:3px;">const GAS_URL = '';</code>
+          에 웹 앱 URL을 입력해 주세요.
+        </div>
+
+        <div class="section-label">입력값</div>
+
+        <div class="row">
+          <span class="row-num">1</span>
+          <div class="row-label"><div class="label-main">Coolant</div></div>
+          <div class="row-control">
+            <select id="coolant" class="ctrl-wide" onchange="calculate(); updateInfoPanel(this.value)">
+              <option value="">— 선택하세요 —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-num">2</span>
+          <div class="row-label">
+            <div class="label-main">Flow Rate</div>
+            <div class="label-sub">LPM</div>
+          </div>
+          <div class="row-control">
+            <input type="number" id="flowRate" class="ctrl-wide" step="0.1" oninput="onInputChange()" />
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-num">3</span>
+          <div class="row-label">
+            <div class="label-main">Supply Temperature</div>
+            <div class="label-sub">°C</div>
+          </div>
+          <div class="row-control">
+            <button class="sign-btn" onclick="toggleSign('supplyTemp')">±</button>
+            <input type="number" id="supplyTemp" class="ctrl-wide" step="0.1" oninput="onInputChange()" />
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-num">4</span>
+          <div class="row-label">
+            <div class="label-main">Return Temperature</div>
+            <div class="label-sub">°C</div>
+          </div>
+          <div class="row-control">
+            <button class="sign-btn" onclick="toggleSign('returnTemp')">±</button>
+            <input type="number" id="returnTemp" class="ctrl-wide" step="0.1" oninput="onInputChange()" />
+          </div>
+        </div>
+
+        <div class="section-label">계산 결과</div>
+
+        <div class="row">
+          <span class="row-num">5</span>
+          <div class="row-label">
+            <div class="label-main">Cooling Capacity</div>
+            <div class="label-sub">kW</div>
+          </div>
+          <div class="row-control">
+            <div class="result-box blue"><span class="result-value" id="result">—</span></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-num">6</span>
+          <div class="row-label">
+            <div class="label-main">Mass Flow Rate</div>
+            <div class="label-sub">kg/s</div>
+          </div>
+          <div class="row-control">
+            <div class="result-box green"><span class="result-value" id="result2">—</span></div>
+          </div>
+        </div>
+
+        <div class="card-footer">Made by bhkim</div>
+      </div>
+
+      <!-- 선택 Coolant 물성 정보 패널 -->
+      <div class="card info-card">
+        <div class="card-header"><h1>선택한 Coolant 물성</h1></div>
+        <div class="info-card-body" id="infoCardBody">
+          <div class="info-empty">Coolant을 선택하면<br>물성 데이터가 여기에 표시됩니다.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════ 탭 2: Coolant Data (계산기 목록 외 참고자료) ══════════════ -->
+  <div class="tab-view" id="viewData">
+    <div class="card data-tab-card">
+      <div class="card-header"><h1>Coolant Data (계산기 목록 외 참고자료)</h1></div>
+      <div class="data-scroll" id="dataTableWrap">
+        <div class="info-empty">불러오는 중...</div>
+      </div>
+      <div class="card-footer">계산기 드롭다운에 없는 제품만 표시됩니다 · 엑셀 '수정' 시트 기준</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal (항목 추가 - 관리자용, 필요 시 URL에 ?admin=1 로 접근) -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>냉각제 항목 추가</h2>
+    <label>명칭 (A열)</label>
+    <input type="text" id="newName" placeholder="예: FC-3283" />
+    <label>계산식 (B열)</label>
+    <input type="text" id="newFormula" placeholder="예: Z*1.82*1.05*(Y-X)/60" />
+    <div class="modal-hint">
+      Z = Flow Rate (LPM) &nbsp;|&nbsp; X = Supply Temp (°C) &nbsp;|&nbsp; Y = Return Temp (°C)<br>
+      사칙연산(+ - * /)과 소수점, 괄호만 사용 가능합니다.
+    </div>
+    <div class="modal-error" id="modalError"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="submitAdd()">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  function showTopTab(name) {
+    document.getElementById('viewCalc').classList.toggle('active', name === 'calc');
+    document.getElementById('viewData').classList.toggle('active', name === 'data');
+    document.getElementById('topTabCalc').classList.toggle('active', name === 'calc');
+    document.getElementById('topTabData').classList.toggle('active', name === 'data');
+  }
+</script>
+
+<script>
+  // ════════════════════════════════════════════════════════════
+  //  Coolant 물성 데이터 (엑셀 '수정' 시트 임베드)
+  //  - COOLANT_PROPS: 15개 물성 행 (한글명/영문명/단위/빨간글씨여부)
+  //  - COOLANT_DATA : { 제품명: [15개 물성 값...] }
+  // ════════════════════════════════════════════════════════════
+const COOLANT_PROPS = [{"kr": "제조사", "en": "Maker", "unit": "-", "red": false}, {"kr": "제조국", "en": "Country of manufacture", "unit": "-", "red": false}, {"kr": "비등점", "en": "Boiling Point", "unit": "℃", "red": true}, {"kr": "빙점", "en": "Pour Point", "unit": "℃", "red": true}, {"kr": "밀도(25℃)", "en": "Liquid density(25℃)", "unit": "g/m3", "red": false}, {"kr": "비열(25℃)*", "en": "Specific Heat(25℃)", "unit": "kJ/kg･K", "red": true}, {"kr": "열전도도(25℃)", "en": "Thermal conductivity", "unit": "mW/(m･K)", "red": false}, {"kr": "동점도(25℃)**", "en": "Kinematic Viscosity(25℃)", "unit": "mm2/s\n(cSt)", "red": true}, {"kr": "점도(25℃)", "en": "Viscosity(25℃)", "unit": "mPa･s\n(cP)", "red": false}, {"kr": "증발잠열", "en": "Heat of Vaporization", "unit": "kJ/kg", "red": false}, {"kr": "증기압(25℃)***", "en": "Vapor pressure (25℃)", "unit": "kPa", "red": true}, {"kr": "전기전도도", "en": "Electrical conductivity", "unit": "μS/cm", "red": false}, {"kr": "체적 고유 저항", "en": "Volume resistivity", "unit": "Ω･cm", "red": false}, {"kr": "절연전압파괴", "en": "Dielectric strenght", "unit": "kV", "red": false}, {"kr": "GWP", "en": "GWP", "unit": "-", "red": false}];
+const COOLANT_DATA = {"FC-40": ["3M", "미국", "155", "-57", "1.85", "1.05", "67", "2.2", "4.2", "71", "0.4", "0", "3×10¹⁵", "46", "7400"], "FC-3283": ["3M", "미국", "128", "-50", "1.87", "1.05", "67", "0.8", "1.5", "71", "1.33", "0", "1×10¹⁵", "43", "7400"], "HT-110": ["Solvay", "벨기에", "110", "-100", "1.71", "0.9614", "65", "0.77", "1.3167", "71.128", "2.27", "-", "1.15×10¹⁵", "40", "10000"], "HT-135": ["Solvay", "벨기에", "135", "-100", "1.72", "0.9614", "65", "1", "1.72", "66.88", "0.77", "-", "1.5×10¹⁵", "40", "10000"], "HT-170": ["Solvay", "벨기에", "170", "-97", "1.77", "0.9614", "65", "1.8", "3.186", "66.88", "0.11", "-", "1.5×10¹⁵", "40", "10000"], "HT-200": ["Solvay", "벨기에", "200", "-85", "1.79", "0.9614", "65", "2.4", "4.296", "62.7", "0.03", "-", "6×10¹⁵", "40", "10000"], "HT-270": ["Solvay", "벨기에", "270", "-66", "1.85", "0.9614", "65", "11.77", "21.7745", "62.7", "0.0004", "-", "6×10¹⁵", "40", "-"], "SF-10": ["Chemous", "미국", "110", "-90", "1.59", "1.02", "55.9", "0.74", "1.2", "118", "2.79", "0.00029", "1.1×10¹⁰", "29", "2.5"], "FL-300": ["JUWHA", "중국", "108", "-65", "1.81", "1.431", "83.4", "1.32", "2.3", "-", "-", "-", "1.4×10¹⁵", "-", "2300"], "HP-HTF3a": [" Sanghai  Hongpu", "중국", "110", "-109.67", "1.815", "1.1768", "62.3", "1.353", "2.4", "82.05", "3.019", "-", "2.4×10¹⁵", "39.4", "120"], "F-506": ["YIDE  CHEMICAL", "중국", "154", "-58", "1.75", "1.29", "517", "3.05", "-", "-", "-", "-", "5.1×10⁸", "20.3", "-"], "DM-LC110": ["JIUDING", "중국", "113", "-70", "1.822", "0.98", "94", "3.53", "6.4", "-", "-", "-", "7.2×10¹⁴", "-", "120"], "HT-1600S": ["HOSCIEN TECH", "중국", "161", "-60", "1.81", "1.13", "102", "0.69", "1.25", "89", "0.52", "-", "-", "40", "100"], "HT-1200S": ["HOSCIEN TECH", "중국", "112", "-80", "1.82", "1.053", "63.6", "0.76", "1.97", "69", "1.44", "-", "-", "40", "100"], "FLE-128": ["WEISS BONYA", "중국", "128", "-50", "1.82", "1.1", "66", "0.75", "1.365", "78", "1.44", "-", "-", "43", "-"], "D4(HFE-6512)": ["JUWHA", "중국", "134", "-137", "1.626", "1.19", "230", "3.4 at 0\n계산 0.74", "1.21\n온도구간모름", "112.6", "3.3", "-", "1×10⁹", "40", "270"], "HFE-A": ["DAIKIN", "일본", "54", "-85", "1.4", "1.31", "85", "0.53", "0.75", "172", "32", "", "2.5×10⁷", "26", "101"], "SS-110": ["DAIKIN", "일본", "110", "<-130", "1.777", "1.03", "64", "0.95", "1.7", "94", "3.6", "-", "1×10¹³", ">40", "<200"], "HFE-7500": ["3M", "미국", "128", "-100", "1.61", "1.12", "65", "0.77", "1.24", "89", "2.1", "-", "1×10⁸", "40", "100"], "HFE-7200": ["3M", "미국", "76", "-138", "1.42", "1.22", "68", "0.41", "0.58", "119", "14.5", "-", "1×10⁸", "40", "59"], "ETI 7200": ["Enviro Tech", "미국", "75", "-150", "1.431", "1.22", "68", "0.46", "0.66", "125.6", "14.5", "-", "-", ">25", "57"], "SV70": ["SOLVAY", "", "70", "-100?", "1.68", "-", "-", "0.5", "0.84", "71", "22", "-", "-", "-", "-"], "Paratherm CR": ["Paratherm", "", "181", "-110", "0.82", "1.92", "140", "0.94", "1", "-", "-", "0.000001", "8.3×10¹¹", "36", "-"], "IM1": ["THERMASOLV", "프랑스", "61", "-135", "1.52", "1.18", "-", "0.38", "0.5776", "112", "27", "-", "1×10⁹", "25", "320"], "IM2": ["THERMASOLV", "프랑스", "49", "-108", "1.6", "1.1", "-", "0.4", "0.64", "88", "40", "-", "1×10¹³", "40", "1"], "IM7": ["ITW-TECHSPRAY", "프랑스", "76", "-138", "1.43", "1.22", "69", "0.43", "0.615", "125.6", "14.5", "-", "1×10⁸", ">25", "55"], "FCN-130": ["Jiangxi Time\nChemical", "중국", "126~132", "-", "1.82", "1.1", "66", "0.911", "-", "-", "-", "-", "-", "-", "-"], "CF1": ["THERMASOLV", "프랑스", "170", "-100", "1.77", "1.14", "-", "1.81", "3.2037", "-", "0.1", "-", "1×10¹¹", "40", "7800"], "CF2": ["THERMASOLV", "프랑스", "110", "-110", "1.81", "1.17", "-", "1.35", "2.4435", "82.5", "3", "-", "2.5×10¹⁴", "39", "120"], "CF3": ["THERMASOLV", "프랑스", "120", "-82", "1.83", "1.16", "-", "1.27", "2.3241", "82.8", "1.51", "-", "1×10¹⁴", "35", "200"]};
+
+
+  // 이름 정규화(대소문자/공백/하이픈 무시) — 계산기 드롭다운 이름과
+  // 엑셀 열 이름 표기가 살짝 달라도(SF10 vs SF-10 등) 매칭되도록 함
+  function normalizeName(s) {
+    return (s || '').toString().toUpperCase().replace(/[\s\-]/g, '');
+  }
+
+  function findCoolantKey(name) {
+    if (!name) return null;
+    const n = normalizeName(name);
+    return Object.keys(COOLANT_DATA).find(k => normalizeName(k) === n) || null;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  // ── 선택한 Coolant 물성 패널 (계산기 옆/아래) ──────────────────
+  function updateInfoPanel(name) {
+    const wrap = document.getElementById('infoCardBody');
+    const key = findCoolantKey(name);
+
+    if (!key) {
+      wrap.innerHTML = '<div class="info-empty">Coolant을 선택하면<br>물성 데이터가 여기에 표시됩니다.</div>';
+      return;
+    }
+
+    const values = COOLANT_DATA[key];
+    let bodyRows = '';
+    COOLANT_PROPS.forEach((p, i) => {
+      const redClass = p.red ? ' text-red' : '';
+      bodyRows += '<tr>' +
+        '<td class="info-td-label' + redClass + '">' + escapeHtml(p.kr) + '</td>' +
+        '<td class="info-td-label' + redClass + '">' + escapeHtml(p.en) + '</td>' +
+        '<td class="info-td-unit">' + escapeHtml(p.unit) + '</td>' +
+        '<td class="info-td-value">' + escapeHtml(values[i] || '-') + '</td>' +
+        '</tr>';
+    });
+
+    wrap.innerHTML =
+      '<table class="info-table">' +
+        '<thead><tr>' +
+          '<th class="info-th-label">제품명</th>' +
+          '<th class="info-th-label">Product</th>' +
+          '<th class="info-th-label">단위</th>' +
+          '<th class="info-th-selected">' + escapeHtml(key) + '</th>' +
+        '</tr></thead>' +
+        '<tbody>' + bodyRows + '</tbody>' +
+      '</table>';
+  }
+
+  // ── Coolant Data 탭: 계산기 목록에 "없는" 항목만 모아서 표시 ────
+  function renderExtraDataTable() {
+    const dropdownNames = new Set(Object.keys(formulaCache).map(normalizeName));
+    const extra = Object.keys(COOLANT_DATA).filter(p => !dropdownNames.has(normalizeName(p)));
+    const container = document.getElementById('dataTableWrap');
+
+    if (extra.length === 0) {
+      container.innerHTML = '<div class="info-empty">계산기 목록 외 추가 참고 데이터가 없습니다.</div>';
+      return;
+    }
+
+    let headCells =
+      '<th class="th-label">제품명</th><th class="th-label">Product</th><th class="th-label">단위</th>';
+    extra.forEach(p => { headCells += '<th class="th-product">' + escapeHtml(p) + '</th>'; });
+
+    let bodyRows = '';
+    COOLANT_PROPS.forEach((prop, i) => {
+      const redClass = prop.red ? ' text-red' : '';
+      let tds =
+        '<td class="td-label' + redClass + '">' + escapeHtml(prop.kr) + '</td>' +
+        '<td class="td-label' + redClass + '">' + escapeHtml(prop.en) + '</td>' +
+        '<td class="td-label">' + escapeHtml(prop.unit) + '</td>';
+      extra.forEach(p => {
+        tds += '<td class="td-data">' + escapeHtml(COOLANT_DATA[p][i] || '-') + '</td>';
+      });
+      bodyRows += '<tr>' + tds + '</tr>';
+    });
+
+    container.innerHTML =
+      '<table class="data-table"><thead><tr>' + headCells + '</tr></thead>' +
+      '<tbody>' + bodyRows + '</tbody></table>';
+  }
+</script>
+
+
+<script>
+  // ============================================================
+  //  ★ GAS 배포 후 발급된 웹 앱 URL을 아래에 붙여넣으세요 ★
+  // ============================================================
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbw86vSXXwoWTDvTCtORA-BmgBATbjdYyZj_EPvbO3t-5eh0l2aibHKuI4EhJBDKS1ajYw/exec';
+  // ============================================================
+
+  let formulaCache   = {};   // { 명칭: B열 계산식 }
+  let formula2Cache  = {};   // { 명칭: C열 계산식 }
+  let debounceTimer  = null;
+
+  // ── 초기화 ──────────────────────────────────────────────────
+  window.onload = function () {
+    updateInfoPanel('');
+    if (!GAS_URL || GAS_URL.trim() === '') {
+      document.getElementById('urlBanner').classList.add('show');
+      document.getElementById('coolant').innerHTML = '<option value="">GAS URL 미설정</option>';
+      renderExtraDataTable();
+      return;
+    }
+    loadCoolantList();
+  };
+
+  // ── GAS API 호출 ────────────────────────────────────────────
+  async function gasCall(params) {
+    const url = GAS_URL + '?' + new URLSearchParams(params).toString();
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('서버 응답 오류: ' + res.status);
+    return await res.json();
+  }
+
+  // ── 냉각제 목록 + 계산식 캐시 로딩 (1행 헤더 제외) ─────────
+  async function loadCoolantList() {
+    const sel = document.getElementById('coolant');
+    sel.innerHTML = '<option value="">— 로딩 중 —</option>';
+    formulaCache  = {};
+    formula2Cache = {};
+    try {
+      const data = await gasCall({ action: 'listall' });
+      if (data.error) { showToast('목록 오류: ' + data.error); return; }
+
+      sel.innerHTML = '<option value="">선택하세요</option>';
+      (data.list || []).forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.name;
+        opt.textContent = item.name;
+        sel.appendChild(opt);
+        formulaCache[item.name]  = item.formula;
+        formula2Cache[item.name] = item.formula2;
+      });
+      renderExtraDataTable();
+    } catch (err) {
+      sel.innerHTML = '<option value="">불러오기 실패</option>';
+      showToast('로딩 실패: ' + err.message);
+    }
+  }
+
+  // ── 입력값 변경 시 즉시 계산 (debounce 50ms) ────────────────
+  function onInputChange() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(calculate, 50);
+  }
+
+  // ── 계산: 캐시된 수식으로 로컬에서 즉시 처리 ───────────────
+  function calculate() {
+    const coolant  = document.getElementById('coolant').value;
+    const flowRate = document.getElementById('flowRate').value;
+    const supplyT  = document.getElementById('supplyTemp').value;
+    const returnT  = document.getElementById('returnTemp').value;
+    const resultEl  = document.getElementById('result');
+    const result2El = document.getElementById('result2');
+
+    if (!coolant || flowRate === '' || supplyT === '' || returnT === '') {
+      resultEl.textContent  = '—';
+      result2El.textContent = '—';
+      return;
+    }
+
+    const Z = Number(flowRate);
+    const X = Number(supplyT);
+    const Y = Number(returnT);
+
+    // ── 5번: B열 계산식 ──
+    const formula = formulaCache[coolant];
+    if (!formula) {
+      resultEl.textContent = '수식 없음';
+    } else {
+      try {
+        let expr = formula
+          .replace(/\bZ\b/g, '(' + Z + ')')
+          .replace(/\bX\b/g, '(' + X + ')')
+          .replace(/\bY\b/g, '(' + Y + ')');
+        if (!/^[0-9+\-*/.() \t\n]+$/.test(expr)) { resultEl.textContent = '수식 오류'; }
+        else {
+          const r = Function('"use strict"; return (' + expr + ')')();
+          resultEl.textContent = isFinite(r) ? r.toFixed(2) : '오류';
+        }
+      } catch (e) { resultEl.textContent = '오류'; }
+    }
+
+    // ── 6번: C열 계산식 ──
+    const formula2 = formula2Cache[coolant];
+    if (!formula2) {
+      result2El.textContent = '수식 없음';
+    } else {
+      try {
+        let expr2 = formula2
+          .replace(/\bZ\b/g, '(' + Z + ')')
+          .replace(/\bX\b/g, '(' + X + ')')
+          .replace(/\bY\b/g, '(' + Y + ')');
+        if (!/^[0-9+\-*/.() \t\n]+$/.test(expr2)) { result2El.textContent = '수식 오류'; }
+        else {
+          const r2 = Function('"use strict"; return (' + expr2 + ')')();
+          result2El.textContent = isFinite(r2) ? r2.toFixed(2) : '오류';
+        }
+      } catch (e) { result2El.textContent = '오류'; }
+    }
+  }
+
+  // ── 부호 전환 ────────────────────────────────────────────────
+  function toggleSign(id) {
+    const input = document.getElementById(id);
+    if (input.value === '') return;
+    input.value = (parseFloat(input.value) * -1).toString();
+    calculate();
+  }
+
+  // ── Modal ────────────────────────────────────────────────────
+  function openModal() {
+    document.getElementById('newName').value    = '';
+    document.getElementById('newFormula').value = '';
+    document.getElementById('modalError').style.display = 'none';
+    document.getElementById('modalOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('newName').focus(), 100);
+  }
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+  document.getElementById('modalOverlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+
+  async function submitAdd() {
+    const name    = document.getElementById('newName').value.trim();
+    const formula = document.getElementById('newFormula').value.trim();
+    const errEl   = document.getElementById('modalError');
+
+    if (!name)    { errEl.textContent = '명칭을 입력해 주세요.';   errEl.style.display = 'block'; return; }
+    if (!formula) { errEl.textContent = '계산식을 입력해 주세요.'; errEl.style.display = 'block'; return; }
+    errEl.style.display = 'none';
+
+    try {
+      const data = await gasCall({ action: 'add', name, formula });
+      if (data.error) {
+        errEl.textContent = data.error; errEl.style.display = 'block';
+      } else {
+        closeModal();
+        showToast('"' + name + '" 항목이 추가되었습니다.');
+        loadCoolantList();
+      }
+    } catch (err) {
+      errEl.textContent = '추가 실패: ' + err.message; errEl.style.display = 'block';
+    }
+  }
+
+  // ── Toast ────────────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+</script>
+</body>
+</html>
