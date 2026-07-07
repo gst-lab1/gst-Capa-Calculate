@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Coolant Capacity Calculator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+
+    :root {
+      /* ── 모바일 기본값 (컴팩트) ── */
+      --app-max-width: 380px;
+      --row-pad: 6px 16px;
+      --font-label: 12px;
+      --font-sub: 9.5px;
+      --font-num: 11px;
+      --ctrl-width: 112px;
+      --header-font: 13.5px;
+      --logo-h: 26px;
+      --data-font: 10px;
+      --info-font: 10.5px;
+      --unit-col-w: 56px;
+    }
+
+    /* ── 데스크톱: 여백 낭비 없이 훨씬 넓고 시원하게 ── */
+    @media (min-width: 860px) {
+      :root {
+        --app-max-width: min(94vw, 1400px);
+        --row-pad: 12px 24px;
+        --font-label: 15px;
+        --font-sub: 11.5px;
+        --font-num: 12.5px;
+        --ctrl-width: 160px;
+        --header-font: 18px;
+        --logo-h: 34px;
+        --data-font: 12.5px;
+        --info-font: 12.5px;
+        --unit-col-w: 64px;
+      }
+    }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #e8edf5;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 14px;
+      overflow-y: auto;
+    }
+
+    .app {
+      width: 100%;
+      max-width: var(--app-max-width);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* ── 상단 탭 ── */
+    .top-tabs { display: flex; gap: 8px; }
+    .top-tab-btn {
+      flex: 1;
+      padding: 9px 10px;
+      text-align: center;
+      font-size: var(--font-label);
+      font-weight: 700;
+      color: #5a6480;
+      background: #fff;
+      border: 1px solid #d8dded;
+      border-radius: 9px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .top-tab-btn.active { color: #fff; background: #1a2550; border-color: #1a2550; }
+
+    .tab-view { display: none; }
+    .tab-view.active { display: block; }
+
+    /* ── 계산기 + 정보패널 (반응형: 모바일=아래, PC=우측) ── */
+    .calc-layout { display: flex; flex-direction: column; gap: 10px; }
+    @media (min-width: 860px) {
+      .calc-layout { flex-direction: row; align-items: flex-start; }
+      .calc-layout .card { flex: 0 0 420px; }
+      .calc-layout .info-card { flex: 1 1 auto; min-width: 0; }
+    }
+
+    .card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+
+    .card-header {
+      background: #1a2550;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px;
+    }
+    .card-header h1 { color: #fff; font-size: var(--header-font); font-weight: 700; letter-spacing: 0.2px; }
+    .logo-svg { height: var(--logo-h); width: auto; display: block; }
+
+    .url-banner {
+      display: none;
+      background: #fff3cd; border-bottom: 1px solid #ffe08a;
+      padding: 7px 16px; font-size: var(--font-sub); color: #7a5c00;
+      align-items: center; gap: 8px;
+    }
+    .url-banner.show { display: flex; }
+
+    .section-label {
+      padding: 7px 16px 4px;
+      font-size: var(--font-sub); color: #5a6480; font-weight: 600;
+      border-bottom: 1px solid #e5e9f2;
+    }
+
+    .row {
+      display: flex; align-items: center;
+      padding: var(--row-pad);
+      border-bottom: 1px solid #eef1f7;
+      gap: 8px;
+    }
+    .row-num { font-size: var(--font-sub); color: #9aa3be; font-weight: 600; width: 14px; flex-shrink: 0; }
+    .row-label { flex: 1; min-width: 0; }
+    .row-label .label-main { font-size: var(--font-label); color: #1a2550; font-weight: 500; }
+    .row-label .label-sub  { font-size: var(--font-sub); color: #9aa3be; margin-top: 1px; }
+    .row-control { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+
+    .ctrl-wide { width: var(--ctrl-width); }
+
+    select.ctrl-wide {
+      appearance: none; -webkit-appearance: none;
+      background: #fff; border: 1px solid #d0d6e8; border-radius: 7px;
+      padding: 6px 26px 6px 9px;
+      font-size: var(--font-label); color: #1a2550; font-family: inherit; cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%235a6480' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+    }
+    select.ctrl-wide:focus { outline: none; border-color: #4a5fc1; }
+
+    input.ctrl-wide {
+      border: 1px solid #d0d6e8; border-radius: 7px;
+      padding: 6px 9px;
+      font-size: var(--font-label); color: #1a2550; font-family: inherit; text-align: right;
+    }
+    input.ctrl-wide:focus { outline: none; border-color: #4a5fc1; }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .sign-btn {
+      background: #f0f3fb; border: 1px solid #d0d6e8; border-radius: 7px;
+      width: 29px; height: 29px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: #5a6480;
+      cursor: pointer; user-select: none; flex-shrink: 0;
+    }
+    .sign-btn:hover { background: #e2e7f5; }
+
+    .result-box {
+      width: var(--ctrl-width); border-radius: 7px;
+      padding: 6px 10px; display: flex; align-items: center; justify-content: flex-end;
+    }
+    .result-box.blue  { background: #dce8f5; }
+    .result-box.green { background: #d6f0e0; }
+    .result-value { font-size: var(--font-num); font-weight: 600; color: #1a2550; text-align: right; width: 100%; }
+
+    .card-footer {
+      padding: 6px; text-align: center;
+      font-size: 9.5px; color: #aab0c8;
+      border-top: 1px solid #eef1f7;
+    }
+
+    /* ── Modal (항목 추가) ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      justify-content: center; align-items: center; z-index: 100;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 12px; padding: 26px 28px; width: 340px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+    .modal h2 { font-size: 15px; font-weight: 700; color: #1a2550; margin-bottom: 18px; }
+    .modal label {
+      display: block; font-size: 12px; color: #5a6480; font-weight: 600;
+      margin-bottom: 4px; margin-top: 12px;
+    }
+    .modal input[type="text"] {
+      width: 100%; border: 1px solid #d0d6e8; border-radius: 7px;
+      padding: 8px 11px; font-size: 13.5px; color: #1a2550; font-family: inherit;
+    }
+    .modal input[type="text"]:focus { outline: none; border-color: #4a5fc1; }
+    .modal-hint { font-size: 11px; color: #9aa3be; margin-top: 5px; line-height: 1.5; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+    .btn {
+      flex: 1; padding: 9px; border-radius: 8px; border: none;
+      font-size: 13.5px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .btn-primary { background: #1a2550; color: #fff; }
+    .btn-primary:hover { background: #253070; }
+    .btn-secondary { background: #f0f3fb; color: #5a6480; }
+    .btn-secondary:hover { background: #e2e7f5; }
+    .modal-error { font-size: 12px; color: #c0392b; margin-top: 8px; display: none; }
+
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: #1a2550; color: #fff;
+      padding: 10px 20px; border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s; z-index: 200; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ══════════════════════════════════════════
+       선택한 Coolant 정보 패널 (세로형 4열 표)
+       ══════════════════════════════════════════ */
+    .info-card .card-header h1::before { content: "🧪 "; }
+    .info-card-body { padding: 0; }
+    .info-empty {
+      padding: 22px 16px;
+      text-align: center;
+      font-size: var(--font-sub);
+      color: #aab0c8;
+      line-height: 1.6;
+    }
+    .info-table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: var(--info-font);
+    }
+    .info-table th, .info-table td {
+      border-right: 1px solid #e5e8f0;
+      border-bottom: 1px solid #e5e8f0;
+      padding: 4px 5px;
+      text-align: center;
+      line-height: 1.3;
+      word-break: keep-all;
+      overflow-wrap: break-word;
+    }
+    .info-table th:first-child, .info-table td:first-child { border-left: 1px solid #e5e8f0; }
+    .info-table thead th { border-top: 1px solid #e5e8f0; }
+    /* 단위 열 너비를 넉넉히 확보해서 글자가 배경 밖으로 안 나가게 */
+    .info-table th:nth-child(1), .info-table td:nth-child(1) { width: 20%; }
+    .info-table th:nth-child(2), .info-table td:nth-child(2) { width: 34%; }
+    .info-table th:nth-child(3), .info-table td:nth-child(3) {
+      width: var(--unit-col-w);
+      white-space: normal;
+      word-break: keep-all;
+    }
+    .info-table th:nth-child(4), .info-table td:nth-child(4) { width: auto; }
+    .info-th-label, .info-td-label { background: #f2f2f2; color: #000; font-weight: 700; }
+    .info-td-unit { background: #f2f2f2; color: #000; font-weight: 700; }
+    .info-th-selected { background: #ffe600; color: #000; font-weight: 700; }
+    .info-td-value { background: #fff; color: #000; font-weight: 400; }
+    .info-table .text-red { color: #ff0000 !important; }
+
+    /* ══════════════════════════════════════════
+       Coolant Data 탭 — 고정열 + 스크롤열 분할 테이블
+       (position:sticky 미사용 → 모바일 브라우저 호환성 100%)
+       ══════════════════════════════════════════ */
+    .data-tab-card {
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 90px);
+      max-height: calc(100dvh - 90px);
+    }
+    .split-table-wrap {
+      display: flex;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .frozen-cols {
+      flex-shrink: 0;
+      overflow: hidden;
+      border-right: 2px solid #c7cee0;
+    }
+    .scroll-cols {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: auto;
+    }
+    .frozen-table, .scroll-table {
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: var(--data-font);
+      white-space: nowrap;
+    }
+    .frozen-table th, .frozen-table td,
+    .scroll-table th, .scroll-table td {
+      border-right: 1px solid #e5e8f0;
+      border-bottom: 1px solid #e5e8f0;
+      padding: 4px 6px;
+      text-align: center;
+      line-height: 1.3;
+    }
+    .frozen-table th:first-child, .frozen-table td:first-child { border-left: 1px solid #e5e8f0; }
+    .scroll-table th:first-child, .scroll-table td:first-child { border-left: 1px solid #e5e8f0; }
+
+    .fr-th, .fr-td { background: #f2f2f2; color: #000; font-weight: 700; width: 60px; min-width: 60px; }
+    .fr-th-en, .fr-td-en { width: 108px; min-width: 108px; white-space: normal; }
+    .fr-th-unit, .fr-td-unit { width: var(--unit-col-w); min-width: var(--unit-col-w); white-space: normal; }
+
+    .sc-th { background: #f2f2f2; color: #000; font-weight: 700; }
+    .sc-td { background: #fff; color: #000; font-weight: 400; min-width: 58px; }
+
+    .frozen-table .text-red, .scroll-table .text-red { color: #ff0000 !important; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="top-tabs">
+    <button class="top-tab-btn active" id="topTabCalc" onclick="showTopTab('calc')">계산기</button>
+    <button class="top-tab-btn" id="topTabData" onclick="showTopTab('data')">Coolant Data (전체)</button>
+  </div>
+
+  <!-- ══════════════ 탭 1: 계산기 + 선택 물성 패널 ══════════════ -->
+  <div class="tab-view active" id="viewCalc">
+    <div class="calc-layout">
+
+      <div class="card">
+        <div class="card-header">
+          <h1>Coolant Capacity Calculator</h1>
+          <svg class="logo-svg" viewBox="0 0 74 30" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GST">
+  <rect x="0" y="0" width="74" height="30" rx="6" fill="#ffffff"/>
+  <text x="37" y="21" font-family="'Segoe UI', Arial, sans-serif" font-size="15" font-weight="800" fill="#1a2550" text-anchor="middle" letter-spacing="0.5">GST</text>
+</svg>
+
+        </div>
+
+        <div class="url-banner" id="urlBanner">
+          ⚠️ GAS_URL이 설정되지 않았습니다.
+          HTML 파일 상단의 <code style="background:#ffe8a0;padding:1px 4px;border-radius:3px;">const GAS_URL = '';</code>
+          에 웹 앱 URL을 입력해 주세요.
+        </div>
+
+        <div class="section-label">입력값</div>
+
+        <div class="row">
+          <span class="row-num">1</span>
+          <div class="row-label"><div class="label-main">Coolant</div></div>
+          <div class="row-control">
+            <select id="coolant" class="ctrl-wide" onchange="calculate(); updateInfoPanel(this.value)">
+              <option value="">— 선택하세요 —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-num">2</span>
+          <div class="row-label">
+            <div class="label-main">Flow Rate</div>
+            <div class="label-sub">LPM</div>
+          </div>
+          <div class="row-control">
+            <input type="number" id="flowRate" class="ctrl-wide" step="0.1" oninput="onInputChange()" />
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-num">3</span>
+          <div class="row-label">
+            <div class="label-main">Supply Temperature</div>
+            <div class="label-sub">°C</div>
+          </div>
+          <div class="row-control">
+            <button class="sign-btn" onclick="toggleSign('supplyTemp')">±</button>
+            <input type="number" id="supplyTemp" class="ctrl-wide" step="0.1" oninput="onInputChange()" />
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-num">4</span>
+          <div class="row-label">
+            <div class="label-main">Return Temperature</div>
+            <div class="label-sub">°C</div>
+          </div>
+          <div class="row-control">
+            <button class="sign-btn" onclick="toggleSign('returnTemp')">±</button>
+            <input type="number" id="returnTemp" class="ctrl-wide" step="0.1" oninput="onInputChange()" />
+          </div>
+        </div>
+
+        <div class="section-label">계산 결과</div>
+
+        <div class="row">
+          <span class="row-num">5</span>
+          <div class="row-label">
+            <div class="label-main">Cooling Capacity</div>
+            <div class="label-sub">kW</div>
+          </div>
+          <div class="row-control">
+            <div class="result-box blue"><span class="result-value" id="result">—</span></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-num">6</span>
+          <div class="row-label">
+            <div class="label-main">Mass Flow Rate</div>
+            <div class="label-sub">kg/s</div>
+          </div>
+          <div class="row-control">
+            <div class="result-box green"><span class="result-value" id="result2">—</span></div>
+          </div>
+        </div>
+
+        <div class="card-footer">Made by bhkim</div>
+      </div>
+
+      <div class="card info-card">
+        <div class="card-header"><h1>선택한 Coolant 물성</h1></div>
+        <div class="info-card-body" id="infoCardBody">
+          <div class="info-empty">Coolant을 선택하면<br>물성 데이터가 여기에 표시됩니다.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════ 탭 2: Coolant Data (계산기 목록 외 참고자료) ══════════════ -->
+  <div class="tab-view" id="viewData">
+    <div class="card data-tab-card">
+      <div class="card-header"><h1>Coolant Data (계산기 목록 외 참고자료)</h1></div>
+      <div id="dataTableWrap">
+        <div class="info-empty">불러오는 중...</div>
+      </div>
+      <div class="card-footer">계산기 드롭다운에 없는 제품만 표시됩니다 · 엑셀 '수정' 시트 기준</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal (항목 추가 - 관리자용, 필요 시 URL에 ?admin=1 로 접근) -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>냉각제 항목 추가</h2>
+    <label>명칭 (A열)</label>
+    <input type="text" id="newName" placeholder="예: FC-3283" />
+    <label>계산식 (B열)</label>
+    <input type="text" id="newFormula" placeholder="예: Z*1.82*1.05*(Y-X)/60" />
+    <div class="modal-hint">
+      Z = Flow Rate (LPM) &nbsp;|&nbsp; X = Supply Temp (°C) &nbsp;|&nbsp; Y = Return Temp (°C)<br>
+      사칙연산(+ - * /)과 소수점, 괄호만 사용 가능합니다.
+    </div>
+    <div class="modal-error" id="modalError"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="submitAdd()">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  function showTopTab(name) {
+    document.getElementById('viewCalc').classList.toggle('active', name === 'calc');
+    document.getElementById('viewData').classList.toggle('active', name === 'data');
+    document.getElementById('topTabCalc').classList.toggle('active', name === 'calc');
+    document.getElementById('topTabData').classList.toggle('active', name === 'data');
+  }
+</script>
+
+<script>
+  // ════════════════════════════════════════════════════════════
+  //  Coolant 물성 데이터 (엑셀 '수정' 시트 임베드)
+  // ════════════════════════════════════════════════════════════
+const COOLANT_PROPS = [{"kr": "제조사", "en": "Maker", "unit": "-", "red": false}, {"kr": "제조국", "en": "Country of manufacture", "unit": "-", "red": false}, {"kr": "비등점", "en": "Boiling Point", "unit": "℃", "red": true}, {"kr": "빙점", "en": "Pour Point", "unit": "℃", "red": true}, {"kr": "밀도(25℃)", "en": "Liquid density(25℃)", "unit": "g/m3", "red": false}, {"kr": "비열(25℃)*", "en": "Specific Heat(25℃)", "unit": "kJ/kg･K", "red": true}, {"kr": "열전도도(25℃)", "en": "Thermal conductivity", "unit": "mW/(m･K)", "red": false}, {"kr": "동점도(25℃)**", "en": "Kinematic Viscosity(25℃)", "unit": "mm2/s\n(cSt)", "red": true}, {"kr": "점도(25℃)", "en": "Viscosity(25℃)", "unit": "mPa･s\n(cP)", "red": false}, {"kr": "증발잠열", "en": "Heat of Vaporization", "unit": "kJ/kg", "red": false}, {"kr": "증기압(25℃)***", "en": "Vapor pressure (25℃)", "unit": "kPa", "red": true}, {"kr": "전기전도도", "en": "Electrical conductivity", "unit": "μS/cm", "red": false}, {"kr": "체적 고유 저항", "en": "Volume resistivity", "unit": "Ω･cm", "red": false}, {"kr": "절연전압파괴", "en": "Dielectric strenght", "unit": "kV", "red": false}, {"kr": "GWP", "en": "GWP", "unit": "-", "red": false}];
+const COOLANT_DATA = {"FC-40": ["3M", "미국", "155", "-57", "1.85", "1.05", "67", "2.2", "4.2", "71", "0.4", "0", "3×10¹⁵", "46", "7400"], "FC-3283": ["3M", "미국", "128", "-50", "1.87", "1.05", "67", "0.8", "1.5", "71", "1.33", "0", "1×10¹⁵", "43", "7400"], "HT-110": ["Solvay", "벨기에", "110", "-100", "1.71", "0.9614", "65", "0.77", "1.3167", "71.128", "2.27", "-", "1.15×10¹⁵", "40", "10000"], "HT-135": ["Solvay", "벨기에", "135", "-100", "1.72", "0.9614", "65", "1", "1.72", "66.88", "0.77", "-", "1.5×10¹⁵", "40", "10000"], "HT-170": ["Solvay", "벨기에", "170", "-97", "1.77", "0.9614", "65", "1.8", "3.186", "66.88", "0.11", "-", "1.5×10¹⁵", "40", "10000"], "HT-200": ["Solvay", "벨기에", "200", "-85", "1.79", "0.9614", "65", "2.4", "4.296", "62.7", "0.03", "-", "6×10¹⁵", "40", "10000"], "HT-270": ["Solvay", "벨기에", "270", "-66", "1.85", "0.9614", "65", "11.77", "21.7745", "62.7", "0.0004", "-", "6×10¹⁵", "40", "-"], "SF-10": ["Chemous", "미국", "110", "-90", "1.59", "1.02", "55.9", "0.74", "1.2", "118", "2.79", "0.00029", "1.1×10¹⁰", "29", "2.5"], "FL-300": ["JUWHA", "중국", "108", "-65", "1.81", "1.431", "83.4", "1.32", "2.3", "-", "-", "-", "1.4×10¹⁵", "-", "2300"], "HP-HTF3a": [" Sanghai  Hongpu", "중국", "110", "-109.67", "1.815", "1.1768", "62.3", "1.353", "2.4", "82.05", "3.019", "-", "2.4×10¹⁵", "39.4", "120"], "F-506": ["YIDE  CHEMICAL", "중국", "154", "-58", "1.75", "1.29", "517", "3.05", "-", "-", "-", "-", "5.1×10⁸", "20.3", "-"], "DM-LC110": ["JIUDING", "중국", "113", "-70", "1.822", "0.98", "94", "3.53", "6.4", "-", "-", "-", "7.2×10¹⁴", "-", "120"], "HT-1600S": ["HOSCIEN TECH", "중국", "161", "-60", "1.81", "1.13", "102", "0.69", "1.25", "89", "0.52", "-", "-", "40", "100"], "HT-1200S": ["HOSCIEN TECH", "중국", "112", "-80", "1.82", "1.053", "63.6", "0.76", "1.97", "69", "1.44", "-", "-", "40", "100"], "FLE-128": ["WEISS BONYA", "중국", "128", "-50", "1.82", "1.1", "66", "0.75", "1.365", "78", "1.44", "-", "-", "43", "-"], "D4(HFE-6512)": ["JUWHA", "중국", "134", "-137", "1.626", "1.19", "230", "3.4 at 0\n계산 0.74", "1.21\n온도구간모름", "112.6", "3.3", "-", "1×10⁹", "40", "270"], "HFE-A": ["DAIKIN", "일본", "54", "-85", "1.4", "1.31", "85", "0.53", "0.75", "172", "32", "", "2.5×10⁷", "26", "101"], "SS-110": ["DAIKIN", "일본", "110", "<-130", "1.777", "1.03", "64", "0.95", "1.7", "94", "3.6", "-", "1×10¹³", ">40", "<200"], "HFE-7500": ["3M", "미국", "128", "-100", "1.61", "1.12", "65", "0.77", "1.24", "89", "2.1", "-", "1×10⁸", "40", "100"], "HFE-7200": ["3M", "미국", "76", "-138", "1.42", "1.22", "68", "0.41", "0.58", "119", "14.5", "-", "1×10⁸", "40", "59"], "ETI 7200": ["Enviro Tech", "미국", "75", "-150", "1.431", "1.22", "68", "0.46", "0.66", "125.6", "14.5", "-", "-", ">25", "57"], "SV70": ["SOLVAY", "", "70", "-100?", "1.68", "-", "-", "0.5", "0.84", "71", "22", "-", "-", "-", "-"], "Paratherm CR": ["Paratherm", "", "181", "-110", "0.82", "1.92", "140", "0.94", "1", "-", "-", "0.000001", "8.3×10¹¹", "36", "-"], "IM1": ["THERMASOLV", "프랑스", "61", "-135", "1.52", "1.18", "-", "0.38", "0.5776", "112", "27", "-", "1×10⁹", "25", "320"], "IM2": ["THERMASOLV", "프랑스", "49", "-108", "1.6", "1.1", "-", "0.4", "0.64", "88", "40", "-", "1×10¹³", "40", "1"], "IM7": ["ITW-TECHSPRAY", "프랑스", "76", "-138", "1.43", "1.22", "69", "0.43", "0.615", "125.6", "14.5", "-", "1×10⁸", ">25", "55"], "FCN-130": ["Jiangxi Time\nChemical", "중국", "126~132", "-", "1.82", "1.1", "66", "0.911", "-", "-", "-", "-", "-", "-", "-"], "CF1": ["THERMASOLV", "프랑스", "170", "-100", "1.77", "1.14", "-", "1.81", "3.2037", "-", "0.1", "-", "1×10¹¹", "40", "7800"], "CF2": ["THERMASOLV", "프랑스", "110", "-110", "1.81", "1.17", "-", "1.35", "2.4435", "82.5", "3", "-", "2.5×10¹⁴", "39", "120"], "CF3": ["THERMASOLV", "프랑스", "120", "-82", "1.83", "1.16", "-", "1.27", "2.3241", "82.8", "1.51", "-", "1×10¹⁴", "35", "200"]};
+
+
+  function normalizeName(s) {
+    return (s || '').toString().toUpperCase().replace(/[\s\-]/g, '');
+  }
+
+  function findCoolantKey(name) {
+    if (!name) return null;
+    const n = normalizeName(name);
+    return Object.keys(COOLANT_DATA).find(k => normalizeName(k) === n) || null;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  // ── 선택한 Coolant 물성 패널 (계산기 옆/아래) ──────────────────
+  function updateInfoPanel(name) {
+    const wrap = document.getElementById('infoCardBody');
+    const key = findCoolantKey(name);
+
+    if (!key) {
+      wrap.innerHTML = '<div class="info-empty">Coolant을 선택하면<br>물성 데이터가 여기에 표시됩니다.</div>';
+      return;
+    }
+
+    const values = COOLANT_DATA[key];
+    let bodyRows = '';
+    COOLANT_PROPS.forEach((p, i) => {
+      const redClass = p.red ? ' text-red' : '';
+      bodyRows += '<tr>' +
+        '<td class="info-td-label' + redClass + '">' + escapeHtml(p.kr) + '</td>' +
+        '<td class="info-td-label' + redClass + '">' + escapeHtml(p.en) + '</td>' +
+        '<td class="info-td-unit">' + escapeHtml(p.unit) + '</td>' +
+        '<td class="info-td-value">' + escapeHtml(values[i] || '-') + '</td>' +
+        '</tr>';
+    });
+
+    wrap.innerHTML =
+      '<table class="info-table">' +
+        '<thead><tr>' +
+          '<th class="info-th-label">제품명</th>' +
+          '<th class="info-th-label">Product</th>' +
+          '<th class="info-th-label">단위</th>' +
+          '<th class="info-th-selected">' + escapeHtml(key) + '</th>' +
+        '</tr></thead>' +
+        '<tbody>' + bodyRows + '</tbody>' +
+      '</table>';
+  }
+
+  // ── Coolant Data 탭: 계산기 목록에 "없는" 항목만, 고정열+스크롤열 2분할 테이블 ──
+  // (position:sticky 대신 물리적으로 표를 2개로 나눠 고정 — 모바일 브라우저 호환성 확보)
+  function renderExtraDataTable() {
+    const dropdownNames = new Set(Object.keys(formulaCache).map(normalizeName));
+    const extra = Object.keys(COOLANT_DATA).filter(p => !dropdownNames.has(normalizeName(p)));
+    const container = document.getElementById('dataTableWrap');
+
+    if (extra.length === 0) {
+      container.innerHTML = '<div class="info-empty">계산기 목록 외 추가 참고 데이터가 없습니다.</div>';
+      return;
+    }
+
+    // ── 고정 열 (제품명 / Product / 단위) ──
+    let frozenHead = '<th class="fr-th">제품명</th><th class="fr-th fr-th-en">Product</th><th class="fr-th fr-th-unit">단위</th>';
+    let frozenBody = '';
+    COOLANT_PROPS.forEach(prop => {
+      const redClass = prop.red ? ' text-red' : '';
+      frozenBody += '<tr>' +
+        '<td class="fr-td' + redClass + '">' + escapeHtml(prop.kr) + '</td>' +
+        '<td class="fr-td fr-td-en' + redClass + '">' + escapeHtml(prop.en) + '</td>' +
+        '<td class="fr-td fr-td-unit">' + escapeHtml(prop.unit) + '</td>' +
+        '</tr>';
+    });
+
+    // ── 스크롤 열 (제품별 값) ──
+    let scrollHead = '';
+    extra.forEach(p => { scrollHead += '<th class="sc-th">' + escapeHtml(p) + '</th>'; });
+    let scrollBody = '';
+    COOLANT_PROPS.forEach((prop, i) => {
+      let tds = '';
+      extra.forEach(p => {
+        tds += '<td class="sc-td">' + escapeHtml(COOLANT_DATA[p][i] || '-') + '</td>';
+      });
+      scrollBody += '<tr>' + tds + '</tr>';
+    });
+
+    container.innerHTML =
+      '<div class="split-table-wrap">' +
+        '<div class="frozen-cols">' +
+          '<table class="frozen-table"><thead><tr>' + frozenHead + '</tr></thead>' +
+          '<tbody>' + frozenBody + '</tbody></table>' +
+        '</div>' +
+        '<div class="scroll-cols">' +
+          '<table class="scroll-table"><thead><tr>' + scrollHead + '</tr></thead>' +
+          '<tbody>' + scrollBody + '</tbody></table>' +
+        '</div>' +
+      '</div>';
+  }
+</script>
+
+
+<script>
+  // ============================================================
+  //  ★ GAS 배포 후 발급된 웹 앱 URL을 아래에 붙여넣으세요 ★
+  // ============================================================
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbw86vSXXwoWTDvTCtORA-BmgBATbjdYyZj_EPvbO3t-5eh0l2aibHKuI4EhJBDKS1ajYw/exec';
+  // ============================================================
+
+  let formulaCache   = {};   // { 명칭: B열 계산식 }
+  let formula2Cache  = {};   // { 명칭: C열 계산식 }
+  let debounceTimer  = null;
+
+  // ── 초기화 ──────────────────────────────────────────────────
+  window.onload = function () {
+    updateInfoPanel('');
+    if (!GAS_URL || GAS_URL.trim() === '') {
+      document.getElementById('urlBanner').classList.add('show');
+      document.getElementById('coolant').innerHTML = '<option value="">GAS URL 미설정</option>';
+      renderExtraDataTable();
+      return;
+    }
+    loadCoolantList();
+  };
+
+  // ── GAS API 호출 ────────────────────────────────────────────
+  async function gasCall(params) {
+    const url = GAS_URL + '?' + new URLSearchParams(params).toString();
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('서버 응답 오류: ' + res.status);
+    return await res.json();
+  }
+
+  // ── 냉각제 목록 + 계산식 캐시 로딩 (1행 헤더 제외) ─────────
+  async function loadCoolantList() {
+    const sel = document.getElementById('coolant');
+    sel.innerHTML = '<option value="">— 로딩 중 —</option>';
+    formulaCache  = {};
+    formula2Cache = {};
+    try {
+      const data = await gasCall({ action: 'listall' });
+      if (data.error) { showToast('목록 오류: ' + data.error); return; }
+
+      sel.innerHTML = '<option value="">선택하세요</option>';
+      (data.list || []).forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.name;
+        opt.textContent = item.name;
+        sel.appendChild(opt);
+        formulaCache[item.name]  = item.formula;
+        formula2Cache[item.name] = item.formula2;
+      });
+      renderExtraDataTable();
+    } catch (err) {
+      sel.innerHTML = '<option value="">불러오기 실패</option>';
+      showToast('로딩 실패: ' + err.message);
+    }
+  }
+
+  // ── 입력값 변경 시 즉시 계산 (debounce 50ms) ────────────────
+  function onInputChange() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(calculate, 50);
+  }
+
+  // ── 계산: 캐시된 수식으로 로컬에서 즉시 처리 ───────────────
+  function calculate() {
+    const coolant  = document.getElementById('coolant').value;
+    const flowRate = document.getElementById('flowRate').value;
+    const supplyT  = document.getElementById('supplyTemp').value;
+    const returnT  = document.getElementById('returnTemp').value;
+    const resultEl  = document.getElementById('result');
+    const result2El = document.getElementById('result2');
+
+    if (!coolant || flowRate === '' || supplyT === '' || returnT === '') {
+      resultEl.textContent  = '—';
+      result2El.textContent = '—';
+      return;
+    }
+
+    const Z = Number(flowRate);
+    const X = Number(supplyT);
+    const Y = Number(returnT);
+
+    // ── 5번: B열 계산식 ──
+    const formula = formulaCache[coolant];
+    if (!formula) {
+      resultEl.textContent = '수식 없음';
+    } else {
+      try {
+        let expr = formula
+          .replace(/\bZ\b/g, '(' + Z + ')')
+          .replace(/\bX\b/g, '(' + X + ')')
+          .replace(/\bY\b/g, '(' + Y + ')');
+        if (!/^[0-9+\-*/.() \t\n]+$/.test(expr)) { resultEl.textContent = '수식 오류'; }
+        else {
+          const r = Function('"use strict"; return (' + expr + ')')();
+          resultEl.textContent = isFinite(r) ? r.toFixed(2) : '오류';
+        }
+      } catch (e) { resultEl.textContent = '오류'; }
+    }
+
+    // ── 6번: C열 계산식 ──
+    const formula2 = formula2Cache[coolant];
+    if (!formula2) {
+      result2El.textContent = '수식 없음';
+    } else {
+      try {
+        let expr2 = formula2
+          .replace(/\bZ\b/g, '(' + Z + ')')
+          .replace(/\bX\b/g, '(' + X + ')')
+          .replace(/\bY\b/g, '(' + Y + ')');
+        if (!/^[0-9+\-*/.() \t\n]+$/.test(expr2)) { result2El.textContent = '수식 오류'; }
+        else {
+          const r2 = Function('"use strict"; return (' + expr2 + ')')();
+          result2El.textContent = isFinite(r2) ? r2.toFixed(2) : '오류';
+        }
+      } catch (e) { result2El.textContent = '오류'; }
+    }
+  }
+
+  // ── 부호 전환 ────────────────────────────────────────────────
+  function toggleSign(id) {
+    const input = document.getElementById(id);
+    if (input.value === '') return;
+    input.value = (parseFloat(input.value) * -1).toString();
+    calculate();
+  }
+
+  // ── Modal ────────────────────────────────────────────────────
+  function openModal() {
+    document.getElementById('newName').value    = '';
+    document.getElementById('newFormula').value = '';
+    document.getElementById('modalError').style.display = 'none';
+    document.getElementById('modalOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('newName').focus(), 100);
+  }
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+  document.getElementById('modalOverlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+
+  async function submitAdd() {
+    const name    = document.getElementById('newName').value.trim();
+    const formula = document.getElementById('newFormula').value.trim();
+    const errEl   = document.getElementById('modalError');
+
+    if (!name)    { errEl.textContent = '명칭을 입력해 주세요.';   errEl.style.display = 'block'; return; }
+    if (!formula) { errEl.textContent = '계산식을 입력해 주세요.'; errEl.style.display = 'block'; return; }
+    errEl.style.display = 'none';
+
+    try {
+      const data = await gasCall({ action: 'add', name, formula });
+      if (data.error) {
+        errEl.textContent = data.error; errEl.style.display = 'block';
+      } else {
+        closeModal();
+        showToast('"' + name + '" 항목이 추가되었습니다.');
+        loadCoolantList();
+      }
+    } catch (err) {
+      errEl.textContent = '추가 실패: ' + err.message; errEl.style.display = 'block';
+    }
+  }
+
+  // ── Toast ────────────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+</script>
+</body>
+</html>
